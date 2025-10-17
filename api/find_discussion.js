@@ -6,7 +6,7 @@ export default async function handler(request, response) {
     return response.status(200).end();
   }
   response.setHeader('Access-Control-Allow-Origin', '*');
-  
+
   const { owner, repo, title } = request.query;
   const token = request.headers.authorization?.split(' ')[1];
 
