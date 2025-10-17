@@ -1,0 +1,67 @@
+export default async function handler(request, response) {
+  const { owner, repo, discussion } = request.query;
+  const token = request.headers.authorization?.split(' ')[1];
+
+  if (!token) {
+    return response.status(401).json({ error: 'No token provided' });
+  }
+
+  if (!owner || !repo || !discussion) {
+    return response.status(400).json({ error: 'Missing owner, repo, or discussion parameter' });
+  }
+
+  try {
+    const graphqlQuery = {
+      query: `
+        query($owner: String!, $repo: String!, $discussion: Int!) {
+          repository(owner: $owner, name: $repo) {
+            discussion(number: $discussion) {
+              title
+              bodyHTML
+              comments(first: 100) {
+                nodes {
+                  author {
+                    login
+                    avatarUrl
+                  }
+                  bodyHTML
+                  createdAt
+                }
+              }
+            }
+          }
+        }
+      `,
+      variables: {
+        owner,
+        repo,
+        discussion: parseInt(discussion),
+      },
+    };
+
+    const apiResponse = await fetch('https://api.github.com/graphql', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(graphqlQuery),
+    });
+
+    const apiData = await apiResponse.json();
+
+    if (apiData.errors) {
+      console.error(apiData.errors);
+      return response.status(500).json({ error: 'Failed to fetch discussion' });
+    }
+    
+    response.setHeader('Access-Control-Allow-Origin', '*');
+    response.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+
+    return response.status(200).json(apiData.data);
+
+  } catch (error) {
+    console.error(error);
+    return response.status(500).json({ error: 'Failed to fetch discussion' });
+  }
+}
