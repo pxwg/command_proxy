@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { serialize } from 'cookie';
+import { serialize, CookieSerializeOptions } from 'cookie';
 
 const ALLOWED_REDIRECT_HOSTS = [
   'localhost',
-   // process.env.DOMAIN || 'example.com',
+  'command-proxy.vercel.app', // Your production frontend hostname
 ];
 
 export default async function handler(
@@ -41,32 +41,36 @@ export default async function handler(
 
     const tokenData = await tokenResponse.json();
     if (tokenData.error) {
-      console.error('Error fetching access token:', tokenData);
       return res.status(400).json({ error: tokenData.error_description });
     }
 
     const { access_token } = tokenData;
 
-    res.setHeader('Set-Cookie', serialize('github_token', access_token, {
+    // Define cookie options with SameSite and Secure attributes for production
+    const cookieOptions: CookieSerializeOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV !== 'development',
       path: '/',
-      maxAge: 60 * 60 * 24 * 30, // 30 days
-    }));
+      maxAge: 60 * 60 * 24 * 30,
+      secure: process.env.NODE_ENV !== 'development',
+      sameSite: 'lax',
+    };
+
+    if (process.env.NODE_ENV !== 'development') {
+        cookieOptions.sameSite = 'none';
+    }
+
+    res.setHeader('Set-Cookie', serialize('github_token', access_token, cookieOptions));
     
-    // Validate and redirect to the full URL.
     let redirectUrl = req.cookies.redirect_after_login || '/';
     try {
       const url = new URL(redirectUrl);
-      // Security check: only redirect to allowed hosts.
       if (!ALLOWED_REDIRECT_HOSTS.includes(url.hostname)) {
-        console.warn(`Redirect blocked to untrusted host: ${url.hostname}`);
-        redirectUrl = '/'; // Fallback to a safe default
+        redirectUrl = '/';
       }
-    } catch (error) {
-        if (!redirectUrl.startsWith('/')) {
-            redirectUrl = '/';
-        }
+    } catch {
+      if (!redirectUrl.startsWith('/')) {
+        redirectUrl = '/';
+      }
     }
 
     res.redirect(302, redirectUrl);
