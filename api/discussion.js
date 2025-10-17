@@ -1,9 +1,8 @@
 export default async function handler(request, response) {
-  // 获取请求来源
-  const origin = request.headers.origin || "*";
+  const origin = request.headers.origin;
 
   if (request.method === "OPTIONS") {
-    response.setHeader("Access-Control-Allow-Origin", origin);
+    response.setHeader("Access-Control-Allow-Origin", origin || "*");
     response.setHeader("Access-Control-Allow-Credentials", "true");
     response.setHeader(
       "Access-Control-Allow-Methods",
@@ -74,7 +73,7 @@ export default async function handler(request, response) {
       return response.status(500).json({ error: "Failed to fetch discussion" });
     }
 
-    response.setHeader("Access-Control-Allow-Origin", origin);
+    response.setHeader("Access-Control-Allow-Origin", origin || "*");
     response.setHeader("Access-Control-Allow-Credentials", "true");
     response.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
 
