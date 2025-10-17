@@ -2,7 +2,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 const ALLOWED_ORIGINS = [
   'http://localhost:4321', 
-  // 'https://your-production-blog-url.com'
+  'https://homeward-sky.top',
+  'https://pxwg.github.io'
 ];
 
 export function handleCors(req: VercelRequest, res: VercelResponse): boolean {

@@ -3,7 +3,9 @@ import { serialize, CookieSerializeOptions } from 'cookie';
 
 const ALLOWED_REDIRECT_HOSTS = [
   'localhost',
-  'command-proxy.vercel.app', // Your production frontend hostname
+  'command-proxy.vercel.app',
+  'homeward-sky.top',
+  'pxwg.github.io'
 ];
 
 export default async function handler(
