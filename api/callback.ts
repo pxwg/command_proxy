@@ -1,6 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { serialize } from 'cookie';
 
+const ALLOWED_REDIRECT_HOSTS = [
+  'localhost:4321',
+   // process.env.DOMAIN || 'example.com',
+];
+
 export default async function handler(
   req: VercelRequest,
   res: VercelResponse
@@ -8,7 +13,6 @@ export default async function handler(
   const { code, state } = req.query;
   const savedState = req.cookies.github_oauth_state;
 
-  // Verify the state to prevent CSRF attacks.
   if (!state || state !== savedState) {
     return res.status(403).json({ error: "Invalid state. CSRF attack detected?" });
   }
@@ -22,15 +26,11 @@ export default async function handler(
   }
 
   try {
-    // Exchange the code for an access token.
     const tokenResponse = await fetch(
       'https://github.com/login/oauth/access_token',
       {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify({
           client_id: clientId,
           client_secret: clientSecret,
@@ -40,7 +40,6 @@ export default async function handler(
     );
 
     const tokenData = await tokenResponse.json();
-
     if (tokenData.error) {
       console.error('Error fetching access token:', tokenData);
       return res.status(400).json({ error: tokenData.error_description });
@@ -48,7 +47,6 @@ export default async function handler(
 
     const { access_token } = tokenData;
 
-    // Store the access token in a secure, httpOnly cookie.
     res.setHeader('Set-Cookie', serialize('github_token', access_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV !== 'development',
@@ -56,8 +54,24 @@ export default async function handler(
       maxAge: 60 * 60 * 24 * 30, // 30 days
     }));
     
-    // Redirect user back to the page they were on.
-    const redirectUrl = req.cookies.redirect_after_login || '/';
+    // --- START OF CHANGE ---
+    // Validate and redirect to the full URL.
+    let redirectUrl = req.cookies.redirect_after_login || '/';
+    try {
+      const url = new URL(redirectUrl);
+      // Security check: only redirect to allowed hosts.
+      if (!ALLOWED_REDIRECT_HOSTS.includes(url.hostname)) {
+        console.warn(`Redirect blocked to untrusted host: ${url.hostname}`);
+        redirectUrl = '/'; // Fallback to a safe default
+      }
+    } catch (error) {
+        // If it's not a full URL (e.g., just '/'), treat it as safe.
+        if (!redirectUrl.startsWith('/')) {
+            redirectUrl = '/';
+        }
+    }
+    // --- END OF CHANGE ---
+
     res.redirect(302, redirectUrl);
 
   } catch (error) {
