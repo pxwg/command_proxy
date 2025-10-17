@@ -1,4 +1,19 @@
 {
-  "name": "my-comment-proxy",
-  "version": "1.0.0"
+  "name": "command_proxy",
+  "version": "1.0.0",
+  "description": "API proxy for blog comments",
+  "main": "index.js",
+  "private": true,
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "cookie": "^0.6.0"
+  },
+  "devDependencies": {
+    "@types/cookie": "^0.6.0",
+    "@types/node": "^20.12.12",
+    "@vercel/node": "^3.1.5",
+    "typescript": "^5.4.5"
+  }
 }
