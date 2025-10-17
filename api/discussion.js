@@ -1,4 +1,11 @@
 export default async function handler(request, response) {
+  if (request.method === 'OPTIONS') {
+    response.setHeader('Access-Control-Allow-Origin', '*');
+    response.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE, PATCH');
+    response.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    return response.status(200).end();
+  }
+
   const { owner, repo, discussion } = request.query;
   const token = request.headers.authorization?.split(' ')[1];
 
