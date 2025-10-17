@@ -108,7 +108,7 @@ export default async function handler(
 
     const discussion: Discussion = discussions[0];
 
-    res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate');
+    res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate');
 
     return res.status(200).json(discussion);
 
