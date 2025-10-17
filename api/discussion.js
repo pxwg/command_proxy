@@ -1,4 +1,5 @@
 export default async function handler(request, response) {
+  // 获取请求来源
   const origin = request.headers.origin || "*";
 
   if (request.method === "OPTIONS") {
