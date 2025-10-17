@@ -1,8 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { handleCors } from '../utils/cors';
 
-// Import your utils - you'll need to copy this or use direct GraphQL
 async function addComment(discussionId: string, body: string, token: string) {
-  // Implement your addComment logic here or import from shared utils
   const query = `
     mutation AddComment($discussionId: ID!, $body: String!) {
       addDiscussionComment(input: {discussionId: $discussionId, body: $body}) {
@@ -26,10 +25,20 @@ async function addComment(discussionId: string, body: string, token: string) {
     }),
   });
 
+  if (!response.ok) {
+    const errorBody = await response.text();
+    console.error(`GitHub API failed to add comment with status ${response.status}:`, errorBody);
+    throw new Error('Failed to post comment to GitHub.');
+  }
+
   return response.json();
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (handleCors(req, res)) {
+    return; 
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -37,7 +46,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const token = req.cookies.github_token;
 
   if (!token) {
-    return res.status(401).json({ error: 'Unauthorized' });
+    return res.status(401).json({ error: 'Unauthorized. Please login.' });
   }
 
   try {
@@ -45,15 +54,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (!discussionId || !body) {
       return res.status(400).json({ 
-        error: 'Discussion ID and body are required' 
+        error: 'Discussion ID and comment body are required.' 
       });
     }
 
-    const newComment = await addComment(discussionId, body, token);
+    const newCommentData = await addComment(discussionId, body, token);
 
-    return res.status(201).json(newComment);
+    if (newCommentData.errors) {
+      console.error('GitHub API returned errors while adding comment:', newCommentData.errors);
+      return res.status(500).json({ error: 'Failed to post comment due to API error.' });
+    }
+
+    return res.status(201).json(newCommentData);
   } catch (error) {
     console.error('Failed to post comment:', error);
-    return res.status(500).json({ error: 'Failed to post comment' });
+    return res.status(500).json({ error: 'Failed to post comment.' });
   }
 }
