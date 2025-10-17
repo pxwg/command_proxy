@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { serialize } from 'cookie';
 
 const ALLOWED_REDIRECT_HOSTS = [
-  'localhost:4321',
+  'localhost',
    // process.env.DOMAIN || 'example.com',
 ];
 
@@ -54,7 +54,6 @@ export default async function handler(
       maxAge: 60 * 60 * 24 * 30, // 30 days
     }));
     
-    // --- START OF CHANGE ---
     // Validate and redirect to the full URL.
     let redirectUrl = req.cookies.redirect_after_login || '/';
     try {
@@ -65,12 +64,10 @@ export default async function handler(
         redirectUrl = '/'; // Fallback to a safe default
       }
     } catch (error) {
-        // If it's not a full URL (e.g., just '/'), treat it as safe.
         if (!redirectUrl.startsWith('/')) {
             redirectUrl = '/';
         }
     }
-    // --- END OF CHANGE ---
 
     res.redirect(302, redirectUrl);
 

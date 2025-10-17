@@ -13,14 +13,16 @@ export default function handler(
     return res.status(500).json({ error: 'Server configuration error.' });
   }
 
+  const redirectUri = req.query.redirect 
+    ? decodeURIComponent(req.query.redirect as string) 
+    : '/';
+
   const cookieOptions = {
     httpOnly: true,
     secure: process.env.NODE_ENV !== 'development',
     path: '/',
     maxAge: 60 * 10,
   };
-
-  const redirectUri = req.query.redirect ? decodeURIComponent(req.query.redirect as string) : '/';
 
   res.setHeader('Set-Cookie', [
     serialize('github_oauth_state', state, cookieOptions),
