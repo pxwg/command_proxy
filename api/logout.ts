@@ -8,7 +8,7 @@ export default function handler(
   // Clear all relevant cookies by setting their maxAge to 0.
   const cookieOptions = {
     httpOnly: true,
-    secure: process.env.NODE_ENV !== 'development',
+    secure: true,
     path: '/',
     maxAge: 0,
     sameSite: 'none' as const, // Use 'none' for consistency

@@ -34,7 +34,7 @@ export default async function handler(
         // Token might be expired or invalid. Clear the cookie.
         res.setHeader('Set-Cookie', serialize('github_token', '', {
             httpOnly: true,
-            secure: process.env.NODE_ENV !== 'development',
+            secure: true,
             path: '/',
             maxAge: 0,
             sameSite: 'none', // Use 'none' for consistency
