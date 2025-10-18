@@ -35,7 +35,10 @@ export default async function handler(
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const token = process.env.GITHUB_TOKEN;
+  const userToken = req.cookies.github_token;
+  const appToken = process.env.GITHUB_TOKEN;
+  const token = userToken || appToken;
+
   if (!token) {
     console.error('GITHUB_TOKEN is not configured.');
     return res.status(500).json({ error: 'Server configuration error.' });
