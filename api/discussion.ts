@@ -43,6 +43,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     createdAt
                     viewerCanUpdate
                     viewerCanDelete
+                    replyTo {
+                      id
+                    }
                   }
                 }
               }
