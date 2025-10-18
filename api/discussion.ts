@@ -1,69 +1,122 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { handleCors } from './utils/cors';
 
-async function findDiscussion(owner: string, repo: string, title: string, token: string | undefined) {
-  const query = `
-    query($owner: String!, $repo: String!, $title: String!) {
-      repository(owner: $owner, name: $repo) {
-        discussion(title: $title) {
-          id
-          url
-          comments(first: 100) {
+interface Author {
+  login: string;
+  avatarUrl: string;
+}
+
+interface CommentNode {
+  author: Author;
+  bodyHTML: string;
+  createdAt: string;
+}
+
+interface Discussion {
+  id: string; 
+  number: number;
+  url: string;
+  title: string;
+  bodyHTML: string;
+  comments: {
+    nodes: CommentNode[];
+  };
+}
+
+export default async function handler(
+  req: VercelRequest,
+  res: VercelResponse
+) {
+  if (handleCors(req, res)) {
+    return;
+  }
+
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
+
+  const userToken = req.cookies.github_token;
+  const appToken = process.env.GITHUB_TOKEN;
+  const token = userToken || appToken;
+
+  if (!token) {
+    console.error('GITHUB_TOKEN is not configured.');
+    return res.status(500).json({ error: 'Server configuration error.' });
+  }
+
+  const { owner, repo, title } = req.query;
+
+  if (!owner || !repo || !title || typeof title !== 'string') {
+    return res.status(400).json({ error: 'Missing required parameters: owner, repo, title' });
+  }
+
+  try {
+    const searchQuery = `repo:${owner}/${repo} in:title "${title}"`;
+    const graphqlQuery = {
+      query: `
+        query($searchQuery: String!) {
+          search(query: $searchQuery, type: DISCUSSION, first: 1) {
             nodes {
-              id
-              author {
-                login
-                avatarUrl
+              ... on Discussion {
+                id
+                number
+                url
+                title
+                bodyHTML
+                comments(first: 100) {
+                  nodes {
+                    author {
+                      login
+                      avatarUrl
+                    }
+                    bodyHTML
+                    createdAt
+                  }
+                }
               }
-              bodyHTML
-              createdAt
-              # CRITICAL FIX: Add viewer permission fields
-              viewerCanUpdate
-              viewerCanDelete
             }
           }
         }
-      }
+      `,
+      variables: { searchQuery },
+    };
+
+    const apiResponse = await fetch('https://api.github.com/graphql', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(graphqlQuery),
+    });
+
+    if (!apiResponse.ok) {
+        const errorBody = await apiResponse.text();
+        console.error(`GitHub API failed with status ${apiResponse.status}:`, errorBody);
+        return res.status(apiResponse.status).json({ error: 'Failed to fetch discussion from GitHub.' });
     }
-  `;
 
-  const headers: HeadersInit = { 'Content-Type': 'application/json' };
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
+    const apiData = await apiResponse.json();
 
-  const response = await fetch('https://api.github.com/graphql', {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ query, variables: { owner, repo, title } }),
-  });
-  
-  if (!response.ok) throw new Error('Failed to fetch discussion from GitHub.');
-  return response.json();
-}
+    if (apiData.errors) {
+      console.error('GitHub API returned errors:', apiData.errors);
+      return res.status(500).json({ error: 'Failed to process discussion data.' });
+    }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (handleCors(req, res)) return;
+    const discussions = apiData.data?.search?.nodes;
 
-  const { owner, repo, title } = req.query;
-  if (!owner || !repo || !title || typeof title !== 'string') {
-    return res.status(400).json({ error: 'Owner, repo, and title are required.' });
-  }
-
-  // The token is optional here to allow anonymous users to view comments
-  const token = req.cookies.github_token;
-
-  try {
-    const discussionData = await findDiscussion(owner as string, repo as string, title, token);
-    const discussion = discussionData.data?.repository?.discussion;
-
-    if (!discussion) {
+    if (!discussions || discussions.length === 0) {
       return res.status(404).json({ error: 'Discussion not found.' });
     }
 
+    const discussion: Discussion = discussions[0];
+
+    res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate');
+
     return res.status(200).json(discussion);
+
   } catch (error) {
-    console.error('Failed to fetch discussion:', error);
-    return res.status(500).json({ error: 'Failed to fetch discussion.' });
+    console.error('Unexpected error:', error);
+    return res.status(500).json({ error: 'An internal server error occurred.' });
   }
 }
