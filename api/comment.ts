@@ -48,7 +48,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const variables = {
           discussionId,
           body,
-          ...(replyToId ? { replyToId } : {}),
+          replyToId: replyToId || null,
         };
         const result = await githubApiRequest(query, variables, token);
         return res.status(201).json(result.data.addDiscussionComment.comment);
