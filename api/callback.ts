@@ -54,7 +54,7 @@ export default async function handler(
       path: '/',
       maxAge: 60 * 60 * 24 * 30,
       secure: process.env.NODE_ENV !== 'development',
-      sameSite: 'lax',
+      sameSite: process.env.NODE_ENV !== 'development' ? 'none' : 'lax',
     };
 
     if (process.env.NODE_ENV !== 'development') {

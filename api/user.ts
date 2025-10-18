@@ -1,6 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { handleCors } from './utils/cors';
 
+import { serialize } from 'cookie';
+
 export default async function handler(
   req: VercelRequest,
   res: VercelResponse
@@ -29,8 +31,14 @@ export default async function handler(
     });
     
     if (!apiResponse.ok) {
-        // Token might be expired or invalid.
-        return res.status(200).json({ isLoggedIn: false });
+        // Token might be expired or invalid. Clear the cookie.
+        res.setHeader('Set-Cookie', serialize('github_token', '', {
+            httpOnly: true,
+            secure: process.env.NODE_ENV !== 'development',
+            path: '/',
+            maxAge: 0,
+        }));
+        return res.status(401).json({ isLoggedIn: false, error: 'Invalid token' });
     }
 
     const apiData = await apiResponse.json();
