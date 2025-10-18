@@ -3,23 +3,18 @@ import { handleCors } from './utils/cors';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (handleCors(req, res)) return;
-
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const userToken = req.cookies.github_token;
-  const appToken = process.env.GITHUB_TOKEN;
-  const token = userToken || appToken;
-
+  const token = req.cookies.github_token || process.env.GITHUB_TOKEN;
   if (!token) {
-    console.error('GitHub token is not configured.');
-    return res.status(500).json({ error: 'Server configuration error.' });
+    return res.status(500).json({ error: 'Server configuration error: GitHub token missing.' });
   }
 
   const { owner, repo, title } = req.query;
   if (!owner || !repo || !title || typeof title !== 'string') {
-    return res.status(400).json({ error: 'Missing required parameters' });
+    return res.status(400).json({ error: 'Missing required parameters.' });
   }
 
   try {
@@ -35,15 +30,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 comments(first: 100) {
                   nodes {
                     id
-                    author {
-                      login
-                      avatarUrl
-                    }
+                    author { login, avatarUrl }
                     bodyHTML
                     createdAt
                     viewerCanUpdate
                     viewerCanDelete
-                    replyTo {
+                    replyTo { # This field is essential for building the reply tree.
                       id
                     }
                   }
@@ -58,16 +50,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const apiResponse = await fetch('https://api.github.com/graphql', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
       body: JSON.stringify(graphqlQuery),
     });
 
     if (!apiResponse.ok) {
-      const errorBody = await apiResponse.text();
-      console.error(`GitHub API failed:`, errorBody);
+      console.error(`GitHub API failed:`, await apiResponse.text());
       return res.status(apiResponse.status).json({ error: 'Failed to fetch from GitHub.' });
     }
 
