@@ -53,8 +53,7 @@ export default async function handler(
       httpOnly: true,
       path: '/',
       maxAge: 60 * 60 * 24 * 30,
-      secure: process.env.NODE_ENV !== 'development',
-      sameSite: process.env.NODE_ENV !== 'development' ? 'none' : 'lax',
+      sameSite: 'none', // Allow cross-site cookie
     };
 
     if (process.env.NODE_ENV !== 'development') {

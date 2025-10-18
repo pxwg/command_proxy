@@ -37,6 +37,7 @@ export default async function handler(
             secure: process.env.NODE_ENV !== 'development',
             path: '/',
             maxAge: 0,
+            sameSite: 'none', // Use 'none' for consistency
         }));
         return res.status(401).json({ isLoggedIn: false, error: 'Invalid token' });
     }
