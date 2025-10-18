@@ -63,6 +63,9 @@ export default async function handler(
 
     res.setHeader('Set-Cookie', serialize('github_token', access_token, cookieOptions));
     
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    
     let redirectUrl = req.cookies.redirect_after_login || '/';
     try {
       const url = new URL(redirectUrl);
@@ -74,8 +77,6 @@ export default async function handler(
         redirectUrl = '/';
       }
     }
-
-    res.redirect(302, redirectUrl);
 
   } catch (error) {
     console.error('Callback handler failed:', error);

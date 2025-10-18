@@ -50,9 +50,9 @@ export default async function handler(
         return res.status(200).json({ isLoggedIn: false });
     }
 
-    // This is a dynamic response, it should not be cached by browsers or CDNs.
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    
+    res.setHeader('Cache-Control', 'private, no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     // Return logged-in status and user info.
     return res.status(200).json({
       isLoggedIn: true,
