@@ -1,10 +1,17 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { handleCors } from './utils/cors';
 
-async function githubApiRequest(query: string, variables: object, token: string) {
+async function githubApiRequest(
+  query: string,
+  variables: object,
+  token: string
+) {
   const response = await fetch('https://api.github.com/graphql', {
     method: 'POST',
-    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify({ query, variables }),
   });
   const data = await response.json();
@@ -28,7 +35,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       case 'POST': {
         const { discussionId, body, replyToId } = req.body;
         if (!discussionId || !body) {
-          return res.status(400).json({ error: 'Discussion ID and body are required.' });
+          return res
+            .status(400)
+            .json({ error: 'Discussion ID and body are required.' });
         }
         const query = `
           mutation($discussionId: ID!, $body: String!, $replyToId: ID) {
@@ -36,14 +45,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               comment { id, bodyHTML, createdAt, author { login, avatarUrl }, viewerCanUpdate, viewerCanDelete }
             }
           }`;
-        const result = await githubApiRequest(query, { discussionId, body, replyToId }, token);
+        const variables = {
+          discussionId,
+          body,
+          ...(replyToId ? { replyToId } : {}),
+        };
+        const result = await githubApiRequest(query, variables, token);
         return res.status(201).json(result.data.addDiscussionComment.comment);
       }
 
       case 'PATCH': {
         const { commentId, body } = req.body;
         if (!commentId || !body) {
-          return res.status(400).json({ error: 'Comment ID and body are required.' });
+          return res
+            .status(400)
+            .json({ error: 'Comment ID and body are required.' });
         }
         const query = `
           mutation($commentId: ID!, $body: String!) {
@@ -51,8 +67,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               comment { id, bodyHTML }
             }
           }`;
-        const result = await githubApiRequest(query, { commentId, body }, token);
-        return res.status(200).json(result.data.updateDiscussionComment.comment);
+        const result = await githubApiRequest(
+          query,
+          { commentId, body },
+          token
+        );
+        return res
+          .status(200)
+          .json(result.data.updateDiscussionComment.comment);
       }
 
       case 'DELETE': {
@@ -70,10 +92,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       default:
         res.setHeader('Allow', ['POST', 'PATCH', 'DELETE']);
-        return res.status(405).json({ error: `Method ${req.method} not allowed` });
+        return res
+          .status(405)
+          .json({ error: `Method ${req.method} not allowed` });
     }
   } catch (error) {
     console.error('API Error:', (error as Error).message);
-    return res.status(500).json({ error: 'An internal server error occurred.' });
+    return res
+      .status(500)
+      .json({ error: 'An internal server error occurred.' });
   }
 }
