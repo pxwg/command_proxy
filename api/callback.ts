@@ -80,6 +80,7 @@ export default async function handler(
     }
 
     return res.redirect(302, redirectUrl);
+    
   } catch (error) {
     console.error('OAuth callback error:', error);
     return res.status(500).json({ error: 'Internal Server Error' });
