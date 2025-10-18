@@ -6,7 +6,7 @@ const ALLOWED_ORIGINS = [
   'https://pxwg.github.io'
 ];
 
-export const cors = (handler: (req: VercelRequest, res: VercelResponse) => Promise<void>) => 
+export const handleCors = (handler: (req: VercelRequest, res: VercelResponse) => Promise<void>) => 
   async (req: VercelRequest, res: VercelResponse) => {
     const origin = req.headers.origin;
     if (origin && ALLOWED_ORIGINS.includes(origin)) {
