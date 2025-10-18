@@ -1,70 +1,71 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { serialize, CookieSerializeOptions } from 'cookie';
+import { serialize, type CookieSerializeOptions } from 'cookie';
+import { handleCors } from './utils/cors';
+
+const CLIENT_ID = process.env.GITHUB_CLIENT_ID!;
+const CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET!;
 
 const ALLOWED_REDIRECT_HOSTS = [
   'localhost',
+  '127.0.0.1',
+  'pxwg-dogggie.github.io',
   'command-proxy.vercel.app',
-  'homeward-sky.top',
-  'pxwg.github.io'
 ];
 
 export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
-  const { code, state } = req.query;
-  const savedState = req.cookies.github_oauth_state;
-
-  if (!state || state !== savedState) {
-    return res.status(403).json({ error: "Invalid state. CSRF attack detected?" });
+  if (handleCors(req, res)) {
+    return;
   }
 
-  const clientId = process.env.GITHUB_CLIENT_ID;
-  const clientSecret = process.env.GITHUB_CLIENT_SECRET;
+  const { code } = req.query;
 
-  if (!clientId || !clientSecret) {
-    console.error('GitHub OAuth credentials are not configured.');
-    return res.status(500).json({ error: 'Server configuration error.' });
+  if (!code || typeof code !== 'string') {
+    return res.status(400).json({ error: 'Missing authorization code' });
   }
 
   try {
-    const tokenResponse = await fetch(
-      'https://github.com/login/oauth/access_token',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({
-          client_id: clientId,
-          client_secret: clientSecret,
-          code,
-        }),
-      }
-    );
+    const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({
+        client_id: CLIENT_ID,
+        client_secret: CLIENT_SECRET,
+        code,
+      }),
+    });
 
     const tokenData = await tokenResponse.json();
+
     if (tokenData.error) {
-      return res.status(400).json({ error: tokenData.error_description });
+      console.error('GitHub OAuth error:', tokenData.error_description);
+      return res.status(400).json({ error: tokenData.error_description || 'OAuth failed' });
     }
 
     const { access_token } = tokenData;
 
-    // Define cookie options with SameSite and Secure attributes for production
+    if (!access_token) {
+      return res.status(400).json({ error: 'No access token received' });
+    }
+
     const cookieOptions: CookieSerializeOptions = {
       httpOnly: true,
       path: '/',
       maxAge: 60 * 60 * 24 * 30,
-      secure: true,
       sameSite: 'none',
+      secure: true,
     };
-
-    if (process.env.NODE_ENV !== 'development') {
-        cookieOptions.sameSite = 'none';
-    }
 
     res.setHeader('Set-Cookie', serialize('github_token', access_token, cookieOptions));
     
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     
     let redirectUrl = req.cookies.redirect_after_login || '/';
     try {
@@ -78,8 +79,9 @@ export default async function handler(
       }
     }
 
+    return res.redirect(302, redirectUrl);
   } catch (error) {
-    console.error('Callback handler failed:', error);
-    res.status(500).json({ error: 'Failed to authenticate with GitHub.' });
+    console.error('OAuth callback error:', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
   }
 }
