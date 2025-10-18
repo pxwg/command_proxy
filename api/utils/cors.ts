@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 const ALLOWED_ORIGINS = [
   'http://localhost:4321', 
+  'https://localhost:4321',
   'https://homeward-sky.top',
   'https://pxwg.github.io'
 ];
