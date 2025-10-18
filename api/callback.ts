@@ -68,19 +68,23 @@ export default async function handler(
     res.setHeader('Expires', '0');
     
     let redirectUrl = req.cookies.redirect_after_login || '/';
+    console.log('Raw redirect_after_login cookie:', req.cookies.redirect_after_login);
     try {
       const url = new URL(redirectUrl);
+      console.log('Parsed redirect URL:', url.href, 'Hostname:', url.hostname);
       if (!ALLOWED_REDIRECT_HOSTS.includes(url.hostname)) {
+        console.log('Redirect hostname not allowed:', url.hostname);
         redirectUrl = '/';
       }
-    } catch {
+    } catch (e) {
+      console.log('Error parsing redirect URL:', redirectUrl, e);
       if (!redirectUrl.startsWith('/')) {
         redirectUrl = '/';
       }
     }
 
     return res.redirect(302, redirectUrl);
-    
+
   } catch (error) {
     console.error('OAuth callback error:', error);
     return res.status(500).json({ error: 'Internal Server Error' });
