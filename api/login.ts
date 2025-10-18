@@ -13,10 +13,12 @@ export default function handler(
     return res.status(500).json({ error: 'Server configuration error.' });
   }
 
-  // Dynamically determine the host and protocol to build the redirect URI
-  const host = req.headers['x-forwarded-host'] || req.headers['host'];
-  const protocol = req.headers['x-forwarded-proto'] || 'https';
-  const callbackUrl = `${protocol}://${host}/api/callback`;
+  // Determine the callback URL
+  const callbackUrl = (req.query.callback_url as string) || 
+    process.env.DEFAULT_CALLBACK_URL || 
+    'https://command-proxy.vercel.app/api/callback';
+
+  console.log('Using callback URL:', callbackUrl);
 
   const redirectAfterLogin = req.query.redirect 
     ? decodeURIComponent(req.query.redirect as string) 
@@ -27,7 +29,7 @@ export default function handler(
     secure: true, // Always secure since we use HTTPS locally now
     path: '/',
     maxAge: 60 * 10, // 10 minutes
-    sameSite: 'lax' as const, // State cookies can be Lax
+    sameSite: 'none' as const,
   };
 
   res.setHeader('Set-Cookie', [
