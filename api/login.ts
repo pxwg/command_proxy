@@ -13,24 +13,31 @@ export default function handler(
     return res.status(500).json({ error: 'Server configuration error.' });
   }
 
-  const redirectUri = req.query.redirect 
+  // Dynamically determine the host and protocol to build the redirect URI
+  const host = req.headers['x-forwarded-host'] || req.headers['host'];
+  const protocol = req.headers['x-forwarded-proto'] || 'https';
+  const callbackUrl = `${protocol}://${host}/api/callback`;
+
+  const redirectAfterLogin = req.query.redirect 
     ? decodeURIComponent(req.query.redirect as string) 
     : '/';
 
   const cookieOptions = {
     httpOnly: true,
-    secure: process.env.NODE_ENV !== 'development',
+    secure: true, // Always secure since we use HTTPS locally now
     path: '/',
-    maxAge: 60 * 10,
+    maxAge: 60 * 10, // 10 minutes
+    sameSite: 'lax' as const, // State cookies can be Lax
   };
 
   res.setHeader('Set-Cookie', [
     serialize('github_oauth_state', state, cookieOptions),
-    serialize('redirect_after_login', redirectUri, cookieOptions)
+    serialize('redirect_after_login', redirectAfterLogin, cookieOptions)
   ]);
 
   const authorizationUrl = 
     `https://github.com/login/oauth/authorize?client_id=${clientId}` +
+    `&redirect_uri=${encodeURIComponent(callbackUrl)}` +
     `&scope=read:user,public_repo,read:discussion` +
     `&state=${state}`;
 
