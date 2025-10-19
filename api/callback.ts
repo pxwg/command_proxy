@@ -18,7 +18,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  const { code } = req.query;
+  const { code, state } = req.query;
+
+  const cookieState = req.cookies.github_oauth_state;
+  if (!state || !cookieState || state !== cookieState) {
+    return res.status(400).json({ error: 'Invalid OAuth state' });
+  }
 
   if (!code || typeof code !== 'string') {
     return res.status(400).json({ error: 'Missing authorization code' });
