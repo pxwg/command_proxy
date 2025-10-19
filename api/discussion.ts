@@ -43,6 +43,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                   comments(first: 100) {
                     nodes {
                       id
+                      body
                       bodyHTML
                       createdAt
                       author { login, avatarUrl }
@@ -52,6 +53,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                       replies(first: 100) {
                         nodes {
                           id
+                          body
                           bodyHTML
                           createdAt
                           author { login, avatarUrl }
