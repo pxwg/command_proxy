@@ -3,10 +3,7 @@ import { handleCors } from './utils/cors';
 
 import { serialize } from 'cookie';
 
-export default async function handler(
-  req: VercelRequest,
-  res: VercelResponse
-) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (handleCors(req, res)) {
     return; // CORS preflight request handled
   }
@@ -25,32 +22,40 @@ export default async function handler(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({ query }),
     });
-    
+
     if (!apiResponse.ok) {
-        // Token might be expired or invalid. Clear the cookie.
-        res.setHeader('Set-Cookie', serialize('github_token', '', {
-            httpOnly: true,
-            secure: true,
-            path: '/',
-            maxAge: 0,
-            sameSite: 'none', // Use 'none' for consistency
-        }));
-        return res.status(401).json({ isLoggedIn: false, error: 'Invalid token' });
+      // Token might be expired or invalid. Clear the cookie.
+      res.setHeader(
+        'Set-Cookie',
+        serialize('github_token', '', {
+          httpOnly: true,
+          secure: true,
+          path: '/',
+          maxAge: 0,
+          sameSite: 'none', // Use 'none' for consistency
+        })
+      );
+      return res
+        .status(401)
+        .json({ isLoggedIn: false, error: 'Invalid token' });
     }
 
     const apiData = await apiResponse.json();
     const user = apiData.data?.viewer;
 
     if (!user) {
-        // Unexpected response from GitHub.
-        return res.status(200).json({ isLoggedIn: false });
+      // Unexpected response from GitHub.
+      return res.status(200).json({ isLoggedIn: false });
     }
 
-    res.setHeader('Cache-Control', 'private, no-cache, no-store, must-revalidate');
+    res.setHeader(
+      'Cache-Control',
+      'private, no-cache, no-store, must-revalidate'
+    );
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
     // Return logged-in status and user info.
